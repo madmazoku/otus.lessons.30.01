@@ -55,8 +55,6 @@ set_target_properties(kkmeans kkmeans_test PROPERTIES
     INCLUDE_DIRECTORIES ${Boost_INCLUDE_DIR}
 )
 
-message("linkL ${SDL2_LIBRARY} ${SDL2_LIBRARIES} ${Boost_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT}")
-
 target_link_libraries(kkmeans
     ${SDL2_LIBRARY} ${SDL2_LIBRARIES} ${Boost_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT}
 )

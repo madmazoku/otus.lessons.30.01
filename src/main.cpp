@@ -42,13 +42,13 @@ void main_body()
     auto console = spdlog::get("console");
 
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
-        console->error("SDL_Init Error: {1}", SDL_GetError());
+        console->error("SDL_Init Error: {0}", SDL_GetError());
         throw std::runtime_error("SDL_Init");
     }
 
     SDL_DisplayMode display_mode;
     if (SDL_GetCurrentDisplayMode(0, &display_mode) != 0) {
-        console->error("SDL_GetCurrentDisplayMode Error: {1}", SDL_GetError());
+        console->error("SDL_GetCurrentDisplayMode Error: {0}", SDL_GetError());
         SDL_Quit();
         throw std::runtime_error("SDL_GetCurrentDisplayMode");
     }
@@ -65,17 +65,20 @@ void main_body()
                           SDL_WINDOW_SHOWN
                       );
     if (win == nullptr) {
-        console->error("SDL_CreateWindow Error: {1}", SDL_GetError());
+        console->error("SDL_CreateWindow Error: {0}", SDL_GetError());
         SDL_Quit();
         throw std::runtime_error("SDL_CreateWindow");
     }
 
     SDL_Renderer *renderer = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED); 
     if (win == nullptr) {
-        console->error("SDL_CreateRenderer Error: {1}", SDL_GetError());
+        console->error("SDL_CreateRenderer Error: {0}", SDL_GetError());
         SDL_Quit();
         throw std::runtime_error("SDL_CreateRenderer");
     }
+
+    SDL_Surface *scr = SDL_GetWindowSurface(win);
+    SDL_Surface *img = SDL_CreateRGBSurface(0, scr->w, scr->h, 32, 0, 0, 0, 0);
 
     bool run = true;
 
@@ -91,17 +94,30 @@ void main_body()
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         SDL_RenderClear(renderer);
 
-        SDL_Rect rect;
-        rect.x = 5;
-        rect.y = 5;
-        rect.w = width - 10;
-        rect.h = height - 10;
-        SDL_SetRenderDrawColor(renderer, 0x7f, 0x7f, 0x7f, 255);
-        SDL_RenderDrawRect(renderer, &rect);
+        // SDL_Rect rect;
+        // rect.x = 5;
+        // rect.y = 5;
+        // rect.w = width - 10;
+        // rect.h = height - 10;
+        // SDL_SetRenderDrawColor(renderer, 0x7f, 0x7f, 0x7f, 255);
+        // SDL_RenderDrawRect(renderer, &rect);
 
-        SDL_RenderPresent(renderer);
+        // SDL_RenderPresent(renderer);
 
-        // SDL_UpdateWindowSurface(win);
+        SDL_LockSurface(img);
+        SDL_memset((unsigned char*)(img->pixels), 0xff, img->h * img->pitch);
+        for(size_t y = 0; y < img->h; ++y)
+            for(size_t x = 0; x < img->w; ++x) {
+                unsigned char* pixel = (unsigned char*)(img->pixels) + x * 4 + y * img->pitch;
+                Uint8 lumr = x + count;
+                Uint8 lumg = y + count;
+                Uint8 lumb = x + y + count;
+                *((Uint32*)pixel) = SDL_MapRGBA(img->format, lumr, lumg, lumb, 0x00);
+            }
+        SDL_UnlockSurface(img);
+        SDL_BlitSurface(img, nullptr, scr, nullptr);
+
+        SDL_UpdateWindowSurface(win);
 
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
