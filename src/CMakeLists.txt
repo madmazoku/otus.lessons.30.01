@@ -8,6 +8,10 @@ else()
     set(CMAKE_BUILD_TYPE Debug)
 endif()
 
+message("${PROJECT_SOURCE_DIR}/cmake")
+
+set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
+
 set(Boost_USE_STATIC_LIBS ON)
 set(Boost_USE_MULTITHREADED ON)
 set(Boost_USE_STATIC_RUNTIME ON)
