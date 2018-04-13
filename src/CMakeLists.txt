@@ -56,7 +56,7 @@ set_target_properties(kkmeans kkmeans_test PROPERTIES
 )
 
 target_link_libraries(kkmeans
-    ${SDL2_LIBRARIES} ${Boost_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT}
+    ${SDL2_LIBRARY} ${SDL2_LIBRARIES} ${Boost_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT}
 )
 
 target_link_libraries(kkmeans_test
