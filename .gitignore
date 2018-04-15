@@ -34,3 +34,8 @@
 # Custom
 bin/
 *.orig
+
+# Docker test result
+docker/kmeans\.png
+docker/centers\.csv
+docker/kmeans\.csv

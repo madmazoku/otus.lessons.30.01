@@ -1,1 +1,2 @@
-samples.pl 4 200 | kkmeans 4 200
+#!/bin/bash
+samples.pl 4 2000 | kkmeans 8 800
