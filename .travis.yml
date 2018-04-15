@@ -9,7 +9,7 @@ before_script:
 - cd build
 - cmake ..
 - sudo cmake --build . --target install
--- cd ../..
+- cd ../..
 - ls -l /usr/lib/libdlib*
 # - sudo apt-get install libopenblas-dev -y
 script:
