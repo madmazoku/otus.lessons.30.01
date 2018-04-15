@@ -12,7 +12,9 @@ set(Boost_USE_STATIC_LIBS ON)
 set(Boost_USE_MULTITHREADED ON)
 set(Boost_USE_STATIC_RUNTIME ON)
 
+message(STATUS "find package dlib")
 find_package(dlib REQUIRED)
+message(STATUS "Using dlib-${dlib_VERSION}")
 
 set(CPACK_GENERATOR DEB)
 
