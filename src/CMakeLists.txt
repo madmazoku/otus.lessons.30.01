@@ -12,10 +12,7 @@ set(Boost_USE_STATIC_LIBS ON)
 set(Boost_USE_MULTITHREADED ON)
 set(Boost_USE_STATIC_RUNTIME ON)
 
-find_package(Boost COMPONENTS unit_test_framework REQUIRED)
-find_package(Threads REQUIRED)
 find_package(dlib REQUIRED)
-find_package(PNG REQUIRED)
 
 set(CPACK_GENERATOR DEB)
 
@@ -32,23 +29,15 @@ set(CMAKE_STATIC_LINKER_FLAGS "${CMAKE_STATIC_LINKER_FLAGS} -std=c++11 -pthread"
 
 include(CPack)
 
-enable_testing()
-
 # local
 configure_file(in.version.h version.h)
 
 add_executable(kkmeans "main.cpp")
 
-add_executable(kkmeans_test "test.cpp")
-
-set_target_properties(kkmeans kkmeans_test PROPERTIES
+set_target_properties(kkmeans PROPERTIES
     CXX_STANDARD 14
     CXX_STANDARD_REQUIRED ON
     COMPILE_OPTIONS -Wpedantic -Wall -Wextra
-)
-
-set_target_properties(kkmeans kkmeans_test PROPERTIES
-    COMPILE_DEFINITIONS BOOST_TEST_STATIC_LINK
     INCLUDE_DIRECTORIES ${Boost_INCLUDE_DIR}
 )
 
@@ -56,10 +45,4 @@ target_link_libraries(kkmeans
     ${Boost_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} dlib::dlib ${PNG_LIBRARY}
 )
 
-target_link_libraries(kkmeans_test
-    ${Boost_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT}
-)
-
 install(TARGETS kkmeans RUNTIME DESTINATION bin)
-
-add_test(kkmeans kkmeans_test)
