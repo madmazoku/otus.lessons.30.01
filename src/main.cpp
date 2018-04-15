@@ -2,149 +2,61 @@
 #include "../bin/version.h"
 
 #include <iostream>
-#include <boost/program_options.hpp>
-#include <boost/tokenizer.hpp>
-#include <spdlog/spdlog.h>
-
-#include <SDL2/SDL.h>
-// #include <SDL2/SDL_image.h>
-
-#include <dlib/clustering.h>
-
 #include <cmath>
 
-void hsv2rgb(Uint8 h, Uint8 s, Uint8 v, Uint8& r, Uint8& g, Uint8& b)
+#include <boost/tokenizer.hpp>
+
+#include <dlib/clustering.h>
+#include <dlib/image_io.h>
+#include <dlib/image_transforms.h>
+
+typedef dlib::matrix<double,2,1> sample_type;
+typedef dlib::radial_basis_kernel<sample_type> kernel_type;
+
+double sqr(double x)
 {
-    unsigned char region, remainder, p, q, t;
-
-    if (s == 0)
-    {
-        r = v;
-        g = v;
-        b = v;
-        return;
-    }
-
-    region = h / 43;
-    remainder = (h - (region * 43)) * 6; 
-
-    p = (v * (255 - s)) >> 8;
-    q = (v * (255 - ((s * remainder) >> 8))) >> 8;
-    t = (v * (255 - ((s * (255 - remainder)) >> 8))) >> 8;
-
-    switch (region)
-    {
-        case 0:
-            r = v; g = t; b = p;
-            break;
-        case 1:
-            r = q; g = v; b = p;
-            break;
-        case 2:
-            r = p; g = v; b = t;
-            break;
-        case 3:
-            r = p; g = q; b = v;
-            break;
-        case 4:
-            r = t; g = p; b = v;
-            break;
-        default:
-            r = v; g = p; b = q;
-            break;
-    }
+    return x * x;
 }
 
-void main_body();
+struct Cluster {
+    size_t _idx;
+    sample_type _center;
+    std::vector<sample_type> _samples;
+
+    double _mean;
+    double _dev;
+
+    Cluster(size_t idx, sample_type center) noexcept : _idx(idx), _center(center), _mean(0), _dev(0) {}
+    Cluster(const Cluster&) = default;
+    Cluster(Cluster&&) = default;
+
+    Cluster& operator=(const Cluster&) = default;
+    Cluster& operator=(Cluster&&) = default;
+};
 
 int main(int argc, char** argv)
 {
-    auto console = spdlog::stderr_logger_st("console");
-    console->info("Wellcome!");
-
-    boost::program_options::options_description desc("Allowed options");
-    desc.add_options()
-    ("help,h", "print usage message")
-    ("version,v", "print version number");
-
-    boost::program_options::variables_map vm;
-    boost::program_options::store(boost::program_options::parse_command_line(argc, argv, desc), vm);
-    boost::program_options::notify(vm);
-
-    if (vm.count("help")) {
-        std::cout << desc << std::endl;
-    } else if (vm.count("version")) {
-        std::cout << "Build version: " << build_version() << std::endl;
-        std::cout << "Boost version: " << (BOOST_VERSION / 100000) << '.' << (BOOST_VERSION / 100 % 1000) << '.' << (BOOST_VERSION % 100) << std::endl;
-    } else {
-        main_body();
+    if(argc < 2) {
+        std::cout << "Usage: " << argv[0] << " N [img_size]" << std::endl;
+        std::cout << "\tdefault img_size is 200" << std::endl;
+        return 0;
     }
 
-    console->info("Goodby!");
+    size_t N = std::stol(argv[1]);
 
-    return 0;
-}
+    size_t img_size = argc > 2 ? std::atol(argv[2]) : 200;
 
-void main_body()
-{
-    auto console = spdlog::get("console");
-
-    if (SDL_Init(SDL_INIT_VIDEO) != 0) {
-        console->error("SDL_Init Error: {0}", SDL_GetError());
-        throw std::runtime_error("SDL_Init");
-    }
-
-    SDL_DisplayMode display_mode;
-    if (SDL_GetCurrentDisplayMode(0, &display_mode) != 0) {
-        console->error("SDL_GetCurrentDisplayMode Error: {0}", SDL_GetError());
-        SDL_Quit();
-        throw std::runtime_error("SDL_GetCurrentDisplayMode");
-    }
-
-    long width = long(display_mode.w * 0.75);
-    long height = long(display_mode.h * 0.75);
-
-    if(width < height)
-        height = width;
-    else
-        width = height;
-
-    SDL_Window *win = SDL_CreateWindow(
-                          "Hellow World!",
-                          SDL_WINDOWPOS_CENTERED,
-                          SDL_WINDOWPOS_CENTERED,
-                          width,
-                          height,
-                          SDL_WINDOW_SHOWN
-                      );
-    if (win == nullptr) {
-        console->error("SDL_CreateWindow Error: {0}", SDL_GetError());
-        SDL_Quit();
-        throw std::runtime_error("SDL_CreateWindow");
-    }
-
-    SDL_Renderer *renderer = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED);
-    if (win == nullptr) {
-        console->error("SDL_CreateRenderer Error: {0}", SDL_GetError());
-        SDL_Quit();
-        throw std::runtime_error("SDL_CreateRenderer");
-    }
-
-    // SDL_Surface *scr = SDL_GetWindowSurface(win);
-    // SDL_Surface *img = SDL_Createurface(0, scr->w, scr->h, 32, 0, 0, 0, 0);
-
-    typedef dlib::matrix<double,2,1> sample_type;
-    typedef dlib::radial_basis_kernel<sample_type> kernel_type;
     dlib::kcentroid<kernel_type> kc(kernel_type(0.1),0.01, 8);
     dlib::kkmeans<kernel_type> test(kc);
 
     std::vector<sample_type> samples;
-    std::vector<sample_type> initial_centers;
+    std::vector<sample_type> centers;
 
-    std::vector<long unsigned int> clustering;
     std::string line;
-    std::map<int, std::vector<std::tuple<double, double, int>>> clusters;
+    size_t lines = 0;
     while(std::getline(std::cin, line)) {
+        ++lines;
+
         std::vector<std::string> tokens;
 
         boost::char_separator<char> sep{";\n", " "};
@@ -153,194 +65,102 @@ void main_body()
 
         double x = std::stof(tokens[0]);
         double y = std::stof(tokens[1]);
-        int c = tokens.size() < 3 ? 0 : std::stoi(tokens[2]);
 
-        clusters[c].push_back(std::make_tuple(x, y, c));
+        if(x < -100 || x > 100 || y < -100 || y > 100) {
+            std::cerr << "skip sample out of bounders in " << lines << " line" << std::endl;
+        }
 
         sample_type m;
         m(0) = x;
         m(1) = y;
 
         samples.push_back(m);
-        clustering.push_back(c);
     }
-    console->info("Loaded {0} samples and {1} clusters", samples.size(), clusters.size());
+    std::cerr << "Loaded " << samples.size() << " samples" << std::endl;
+    std::cerr << "Divide into " << N << " clusters by kmeans" << std::endl;
 
-    test.set_number_of_centers(clusters.size());
-    dlib::pick_initial_centers(test.number_of_centers(), initial_centers, samples, test.get_kernel());
-    test.train(samples,initial_centers);
+    test.set_number_of_centers(N);
+    dlib::pick_initial_centers(test.number_of_centers(), centers, samples, test.get_kernel());
+    test.train(samples,centers);
 
-    std::vector<long unsigned int> assignments = dlib::spectral_cluster(kernel_type(0.1), samples, clusters.size());
+    dlib::find_clusters_using_kmeans(samples, centers);
 
-    // dlib::find_clusters_using_kmeans(samples, initial_centers);
-    // std::vector<unsigned long> assignments;
-    // for (unsigned long i = 0; i < samples.size(); ++i)
-    //     assignments.push_back(nearest_center(initial_centers, samples[i]));
+    std::vector<Cluster> clusters;
+    for(size_t n = 0; n < test.number_of_centers(); ++n)
+        clusters.push_back(Cluster(n, centers[n]));
 
-    for(size_t n = 0; n < samples.size(); ++n) {
-        sample_type m = samples[n];
-        std::cout << m(0) << ";" << m(1) << ";" << assignments[n] << std::endl;
+    std::ofstream kmeans_out("kmeans.csv");
+    for (size_t n = 0; n < samples.size(); ++n) {
+        sample_type& s = samples[n];
+        size_t idx = nearest_center(centers, s);
+        kmeans_out << s(0) << ";" << s(1) << ";" << idx << "\n";
+        clusters[idx]._samples.push_back(s);
     }
+    kmeans_out.close();
 
-    std::vector<std::tuple<int, size_t, SDL_Point*>> samples_p;
-    for(auto& ss : clusters) {
-        SDL_Point* points = new SDL_Point[ss.second.size()];
-        for(size_t n = 0; n < ss.second.size(); ++n) {
-            points[n].x = int(double(width - 10) * (std::get<0>(ss.second[n]) + 100) / 200) + 5;
-            points[n].y = int(double(height - 10) * (std::get<1>(ss.second[n]) + 100) / 200) + 5;
-        }
-        samples_p.push_back(std::make_tuple(ss.first, ss.second.size(), points));
+    std::ofstream centers_out("centers.csv");
+    size_t max_size = 0;
+    for(auto& c : clusters) {
+        centers_out << c._idx << ";" << c._center(0) << ";" << c._center(1) << ";" << c._samples.size() << "\n";
+        if(max_size < c._samples.size())
+            max_size = c._samples.size();
+
+        double d = 0;
+        for(auto& s : c._samples)
+            d += sqrt(sqr(c._center(0) - s(0)) + sqr(c._center(1) - s(1)));
+        c._mean = d / c._samples.size();
+        d = 0;
+        for(auto& s : c._samples)
+            d += sqr(c._mean - sqrt(sqr(c._center(0) - s(0)) + sqr(c._center(1) - s(1))));
+        c._dev = sqrt(d / (c._samples.size() - 1));
+        std::cerr << "Cluster # " << c._idx
+                  << " { " << c._center(0) << ", " << c._center(1) << " }"
+                  << " has " << c._samples.size() << " samples;"
+                  << " mean: " << c._mean
+                  << " deviation: " << c._dev
+                  << std::endl;
     }
+    centers_out.close();
 
-    for(size_t n = 0; n < samples_p.size(); ++n)
-        console->info("Cluster # {0}; id: {1}; points: {2}", n, std::get<0>(samples_p[n]), std::get<1>(samples_p[n]));
+    double scale_size = 0.5 * img_size / N / max_size;
 
-    bool run = true;
+    dlib::array2d<dlib::hsi_pixel> img(img_size, img_size);
+    double scale_space = img_size / 200.0;
+    double scale_color = 255.0 / N;
+    double scale_dist = 255.0 / sqrt(2 * sqr(img_size));
 
-    auto start = std::chrono::system_clock::now();
-    size_t count = 0;
-    auto last = start;
-    size_t last_count = count;
-    double time_step = 0.0;
-    bool orig = true;
-
-    while (run) {
-        auto loop_start = std::chrono::system_clock::now();
-        ++count;
-
-        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-        SDL_RenderClear(renderer);
-
-        SDL_Rect rect;
-        rect.x = 5;
-        rect.y = 5;
-        rect.w = width - 10;
-        rect.h = height - 10;
-        SDL_SetRenderDrawColor(renderer, 0x7f, 0x7f, 0x7f, 255);
-        SDL_RenderDrawRect(renderer, &rect);
-
-        // size_t N = 20;
-        // double sx = double(width - 10) / N;
-        // double sy = double(height - 10) / N;
-
-        // for(size_t n = 0; n < 5; ++n) {
-        //     SDL_SetRenderDrawColor(renderer, 0x7f + n * 0x10, 0x7f + n * 0x10, 0x7f + n * 0x10, 255);
-        //     size_t m = size_t(n + count * 10 * time_step) % N;
-        //     SDL_RenderDrawLine(renderer, 5, 5 + m * sy, 5 + m * sx, height - 5);
-        //     SDL_RenderDrawLine(renderer, 5 + (N - m) * sx, 5, width - 5, 5 + (N - m) * sy);
-
-        //     SDL_RenderDrawLine(renderer, 5, 5 + m * sy, 5 + (N - m) * sx, 5);
-        //     SDL_RenderDrawLine(renderer, 5 + m * sx, height - 5, width - 5, 5 + (N - m) * sy);
-        // }
-
-        // size_t x = (sin(M_PI * count * time_step) + 2.0) * (width >> 2);
-        // size_t y = (cos(M_PI * count * time_step) + 2.0) * (height >> 2);
-        // SDL_RenderDrawLine(renderer, 5, y, width - 5, y);
-        // SDL_RenderDrawLine(renderer, x, 5, x, height - 5);
-
-        double sha = 0x7f * (1.0 / test.number_of_centers());
-        double shc = 0x7f * (1.0 / clusters.size());
-        for(size_t n = 0; n < samples.size(); ++n) {
-            sample_type m = samples[n];
-            int a;
-
-            Uint8 h,s,v;
-            h = 0;
-            s = 0xff;
-            v = 0xff;
-
-            if(orig)
-                h = 0xff - clustering[n] * shc;
-            else
-                h = assignments[n] * sha;
-
-            Uint8 r,g,b;
-            hsv2rgb(h, s, v, r, g, b);
-
-            SDL_Rect rectangle;
-            rectangle.w = 3;
-            rectangle.h = 3;
-
-            int x = (width - 10) * (m(0) + 100) / 200 + 5;
-            int y = (height - 10) * (m(1) + 100) / 200 + 5;
-
-            rectangle.x = x - 1;
-            rectangle.y = y - 1;
-
-            SDL_SetRenderDrawColor(renderer, r, g, b, 0xff);
-            SDL_RenderFillRect(renderer, &rectangle);
-
-        }
-
-        // double sh = 255.0 / samples_p.size();
-        // for(size_t n = 0; n < samples_p.size(); ++n)
-        // {
-        //     Uint8 h,s,v;
-        //     h = Uint8(n * sh);
-        //     s = 0xff;
-        //     v = 0xff;
-
-        //     Uint8 r,g,b;
-        //     hsv2rgb(h, s, v, r, g, b);
-
-        //     SDL_SetRenderDrawColor(renderer, r, g, b, 0xff);
-        //     SDL_RenderDrawPoints(renderer, std::get<2>(samples_p[n]), std::get<1>(samples_p[n]));
-        // }
-
-        // SDL_SetRenderDrawColor(renderer, 0xff, 0xff, 0xff, 255);
-        // SDL_RenderDrawPoints(renderer, samples_p, samples.size());
-
-        SDL_RenderPresent(renderer);
-
-        // SDL_LockSurface(img);
-        // SDL_memset((unsigned char*)(img->pixels), 0xff, img->h * img->pitch);
-        // for(size_t y = 0; y < img->h; ++y)
-        //     for(size_t x = 0; x < img->w; ++x) {
-        //         unsigned char* pixel = (unsigned char*)(img->pixels) + x * 4 + y * img->pitch;
-        //         Uint8 lumr = x + count;
-        //         Uint8 lumg = y + count;
-        //         Uint8 lumb = x + y + count;
-        //         *((Uint32*)pixel) = SDL_Map(img->format, lumr, lumg, lumb, 0x00);
-        //     }
-        // SDL_UnlockSurface(img);
-        // SDL_BlitSurface(img, nullptr, scr, nullptr);
-
-        // SDL_UpdateWindowSurface(win);
-
-        SDL_Event event;
-        while (SDL_PollEvent(&event)) {
-            if (event.type == SDL_QUIT
-                || event.type == SDL_KEYDOWN
-                || event.type == SDL_KEYUP) {
-                run = false;
+    for(size_t y = 0; y < img_size; ++y)
+        for(size_t x = 0; x < img_size; ++x) {
+            sample_type m;
+            m(0) = x / scale_space - 100.0;
+            m(1) = y / scale_space - 100.0;
+            Cluster& c = clusters[nearest_center(centers, m)];
+            double d = sqrt(sqr(c._center(0) - m(0)) + sqr(c._center(1) - m(1)));
+            if(fabs(d - c._mean) < c._dev ) {
+                uint8_t h = uint8_t(c._idx * scale_color);
+                img[y][x] = dlib::hsi_pixel(h, 0x7f, 0x1f);
+            }
+            if(fabs(d - c._mean) * scale_space < 1.0 ) {
+                uint8_t h = uint8_t(c._idx * scale_color);
+                img[y][x] = dlib::hsi_pixel(h, 0x7f, 0x3f);
             }
         }
 
-        auto end = std::chrono::system_clock::now();
-        std::chrono::duration<double> full_elapsed = end - start;
-        std::chrono::duration<double> last_elapsed = end - last;
-        std::chrono::duration<double> loop_elapsed = end - loop_start;
-        time_step = (time_step * (count-1) + loop_elapsed.count()) / count;
-
-        if (!run || last_elapsed.count() >= 1) {
-            int frames = count - last_count;
-            double fps = ((double)frames) / last_elapsed.count();
-
-            orig = long(count * time_step * 0.5) % 2;
-            std::string title = "kkmeans: ";
-            title += orig ? "original" : "calculated";
-            title += " FPS: " + std::to_string(fps);
-
-            SDL_SetWindowTitle(win, title.c_str());
-
-            console->info("[{0} / {1}] fps: {2}; time_step: {3}", full_elapsed.count(), count, fps, time_step);
-
-            last = end;
-            last_count = count;
+    for(auto& c : clusters) {
+        uint8_t h = uint8_t(c._idx * scale_color);
+        size_t cx = size_t((c._center(0) + 100) * scale_space);
+        size_t cy = size_t((c._center(1) + 100) * scale_space);
+        size_t cm = size_t(c._mean * scale_space);
+        size_t cr = c._samples.size() * scale_size;
+        dlib::draw_solid_circle(img, dlib::dpoint(cx, cy), cr, dlib::hsi_pixel(h, 0x7f, 0x3f));
+        for(auto& s : c._samples) {
+            size_t x = size_t((s(0) + 100) * scale_space);
+            size_t y = size_t((s(1) + 100) * scale_space);
+            img[y][x] = dlib::hsi_pixel(h, 0xff, 0x7f);
         }
     }
 
-    SDL_DestroyRenderer(renderer);
-    SDL_DestroyWindow(win);
-    SDL_Quit();
+    dlib::save_png(img, "./kmeans.png");
+
+    return 0;
 }

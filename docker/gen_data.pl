@@ -24,7 +24,7 @@ while(my $cluster = shift @clusters) {
 @samples = List::Util::shuffle @samples;
 
 foreach my $s (@samples) {
-    print "$s->[0];$s->[1];$s->[2]\n";
+    print "$s->[0];$s->[1]\n";
 }
 
 sub generate_cluster_centers {

@@ -8,15 +8,12 @@ else()
     set(CMAKE_BUILD_TYPE Debug)
 endif()
 
-set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
-
 set(Boost_USE_STATIC_LIBS ON)
 set(Boost_USE_MULTITHREADED ON)
 set(Boost_USE_STATIC_RUNTIME ON)
 
-find_package(Boost COMPONENTS unit_test_framework program_options REQUIRED)
+find_package(Boost COMPONENTS unit_test_framework REQUIRED)
 find_package(Threads REQUIRED)
-find_package(SDL2 REQUIRED)
 find_package(dlib REQUIRED)
 find_package(PNG REQUIRED)
 
@@ -56,7 +53,7 @@ set_target_properties(kkmeans kkmeans_test PROPERTIES
 )
 
 target_link_libraries(kkmeans
-    ${SDL2_LIBRARY} ${SDL2_LIBRARIES} ${Boost_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} dlib::dlib ${PNG_LIBRARY}
+    ${Boost_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} dlib::dlib ${PNG_LIBRARY}
 )
 
 target_link_libraries(kkmeans_test
