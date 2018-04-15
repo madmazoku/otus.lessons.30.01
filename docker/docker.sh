@@ -1,9 +1,10 @@
 echo ========= Build docker image
 docker build -t otus.lessons.30.01 .
 echo ========= Execute kkmeans
-docker run --rm -i otus.lessons.30.01 kkmeans -v
-xhost +SI:$USER:root
-xauth nlist :0 | sed -e 's/^..../ffff/' | xauth -f /tmp/.docker.xauth nmerge -
-docker run --rm -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix -v /tmp/.docker.xauth:/tmp/.docker.xauth -v /etc/machine-id:/etc/machine-id -ti otus.lessons.30.01 kkmeans
+docker run --rm -i otus.lessons.30.01 test.sh
+docker cp centers.csv centers.csv
+docker cp kmeans.csv kmeans.csv
+docker cp kmeans.png kmeans.png
+xdg-open kmeans.png
 echo ========= Remove docker image
 docker rmi otus.lessons.30.01

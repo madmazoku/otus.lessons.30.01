@@ -1,0 +1,1 @@
+samples.pl 4 200 | kkmeans 4 200

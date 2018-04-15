@@ -122,9 +122,8 @@ int main(int argc, char** argv)
     }
     centers_out.close();
 
-    double scale_size = 0.5 * img_size / N / max_size;
-
     dlib::array2d<dlib::hsi_pixel> img(img_size, img_size);
+    double scale_size = 0.5 * 100 / N / max_size;
     double scale_space = img_size / 200.0;
     double scale_color = 255.0 / N;
     double scale_dist = 255.0 / sqrt(2 * sqr(img_size));
@@ -136,13 +135,18 @@ int main(int argc, char** argv)
             m(1) = y / scale_space - 100.0;
             Cluster& c = clusters[nearest_center(centers, m)];
             double d = sqrt(sqr(c._center(0) - m(0)) + sqr(c._center(1) - m(1)));
-            if(fabs(d - c._mean) < c._dev ) {
-                uint8_t h = uint8_t(c._idx * scale_color);
-                img[y][x] = dlib::hsi_pixel(h, 0x7f, 0x1f);
-            }
-            if(fabs(d - c._mean) * scale_space < 1.0 ) {
+            bool b_mean = fabs(d - c._mean) * scale_space < 1.0;
+            bool b_size = fabs(d) < c._samples.size() * scale_size;
+            bool b_dev = fabs(d - c._mean) < c._dev;
+            if( b_mean ) {
                 uint8_t h = uint8_t(c._idx * scale_color);
                 img[y][x] = dlib::hsi_pixel(h, 0x7f, 0x3f);
+            } else if( b_size ) {
+                uint8_t h = uint8_t(c._idx * scale_color);
+                img[y][x] = dlib::hsi_pixel(h, 0x7f, 0x7f);
+            } else if( b_dev ) {
+                uint8_t h = uint8_t(c._idx * scale_color);
+                img[y][x] = dlib::hsi_pixel(h, 0x7f, 0x1f);
             }
         }
 
@@ -152,7 +156,7 @@ int main(int argc, char** argv)
         size_t cy = size_t((c._center(1) + 100) * scale_space);
         size_t cm = size_t(c._mean * scale_space);
         size_t cr = c._samples.size() * scale_size;
-        dlib::draw_solid_circle(img, dlib::dpoint(cx, cy), cr, dlib::hsi_pixel(h, 0x7f, 0x3f));
+        // dlib::draw_solid_circle(img, dlib::dpoint(cx, cy), cr, dlib::hsi_pixel(h, 0x7f, 0x3f));
         for(auto& s : c._samples) {
             size_t x = size_t((s(0) + 100) * scale_space);
             size_t y = size_t((s(1) + 100) * scale_space);
