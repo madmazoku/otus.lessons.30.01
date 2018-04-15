@@ -3,9 +3,10 @@ before_script:
 - sudo apt-get install libboost-test-dev -y
 - sudo apt-get install libgles2-mesa-dev -y
 - sudo apt-get install libsdl2-dev -y
+- sudo apt-get install libdlib-dev -y
 - echo "deb http://archive.ubuntu.com/ubuntu xenial main universe" | sudo tee -a /etc/apt/sources.list
 - sudo apt-get update -qq
-- sudo apt-get install libdlib-dev -y
+# - sudo apt-get install libdlib-dev -y
 - ls /usr/lib/libdlib.a
 # - sudo apt-get install libopenblas-dev -y
 script:
