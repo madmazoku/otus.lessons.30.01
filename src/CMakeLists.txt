@@ -46,3 +46,5 @@ target_link_libraries(kkmeans
 )
 
 install(TARGETS kkmeans RUNTIME DESTINATION bin)
+
+INSTALL(FILES samples.pl DESTINATION bin)
