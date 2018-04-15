@@ -6,8 +6,10 @@ before_script:
 - git clone https://github.com/davisking/dlib
 - cd dlib
 - mkdir build
+- cd build
 - cmake ..
 - sudo cmake --build . --target install
+-- cd ../..
 - ls -l /usr/lib/libdlib*
 # - sudo apt-get install libopenblas-dev -y
 script:
