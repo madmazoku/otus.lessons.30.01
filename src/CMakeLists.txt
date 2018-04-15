@@ -40,7 +40,6 @@ set_target_properties(kkmeans PROPERTIES
     CXX_STANDARD 14
     CXX_STANDARD_REQUIRED ON
     COMPILE_OPTIONS -Wpedantic -Wall -Wextra
-    INCLUDE_DIRECTORIES ${Boost_INCLUDE_DIR}
 )
 
 target_link_libraries(kkmeans
