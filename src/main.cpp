@@ -11,7 +11,7 @@
 #include <dlib/image_transforms.h>
 
 typedef dlib::matrix<double,2,1> sample_type;
-typedef dlib::radial_basis_kernel<sample_type> kernel_type;
+typedef dlib::linear_kernel<sample_type> kernel_type;
 
 double sqr(double x)
 {
@@ -46,7 +46,7 @@ int main(int argc, char** argv)
 
     size_t img_size = argc > 2 ? std::atol(argv[2]) : 200;
 
-    dlib::kcentroid<kernel_type> kc(kernel_type(0.1),0.01, 8);
+    dlib::kcentroid<kernel_type> kc(kernel_type(),0.01, 8);
     dlib::kkmeans<kernel_type> test(kc);
 
     std::vector<sample_type> samples;
@@ -81,9 +81,8 @@ int main(int argc, char** argv)
 
     test.set_number_of_centers(N);
     dlib::pick_initial_centers(test.number_of_centers(), centers, samples, test.get_kernel());
-    test.train(samples,centers);
-
     dlib::find_clusters_using_kmeans(samples, centers);
+    test.train(samples,centers);
 
     std::vector<Cluster> clusters;
     for(size_t n = 0; n < test.number_of_centers(); ++n)
@@ -92,7 +91,7 @@ int main(int argc, char** argv)
     std::ofstream kmeans_out("kmeans.csv");
     for (size_t n = 0; n < samples.size(); ++n) {
         sample_type& s = samples[n];
-        size_t idx = nearest_center(centers, s);
+        size_t idx = test(s);
         kmeans_out << s(0) << ";" << s(1) << ";" << idx << "\n";
         clusters[idx]._samples.push_back(s);
     }
@@ -133,7 +132,7 @@ int main(int argc, char** argv)
             sample_type m;
             m(0) = x / scale_space - 100.0;
             m(1) = y / scale_space - 100.0;
-            Cluster& c = clusters[nearest_center(centers, m)];
+            Cluster& c = clusters[test(m)];
             double d = sqrt(sqr(c._center(0) - m(0)) + sqr(c._center(1) - m(1)));
             bool b_mean = fabs(d - c._mean) * scale_space < 1.0;
             bool b_size = fabs(d) < c._samples.size() * scale_size;

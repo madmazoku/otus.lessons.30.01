@@ -18,7 +18,7 @@ while(my $cluster = shift @clusters)
 {
     my $s_count = $samples_count - scalar(@samples);
     if(@clusters) {
-        $s_count *= (0.5 + rand()) / scalar(@clusters + 1);
+        $s_count = int($s_count * (0.5 + rand()) / scalar(@clusters + 1));
     }
 
     print STDERR "Cluser # $cluster->[3]: $cluster->[0], $cluster->[1] ($cluster->[2]) $s_count samples\n";
